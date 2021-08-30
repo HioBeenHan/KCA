@@ -2,18 +2,6 @@
 
 
 ```python
-
-```
-
-
-
-
-    ['./sample.txt']
-
-
-
-
-```python
 import re
 import pandas as pd; import datetime as dt; import numpy as np
 import matplotlib.pyplot as plt
@@ -114,7 +102,7 @@ ax.tick_params( axis='x', labelsize= 15 )
 
 
 
-![png](output_8_1.png)
+![png](hist_sample.png)
 
 
 ### 5. 특정 이름 가진 사람만 분석하기
