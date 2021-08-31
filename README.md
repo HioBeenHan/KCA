@@ -1,12 +1,9 @@
-# 재미로 만들어보는 카카오톡 채팅방 분석 스크립트
+# 재미로 만들어보는 카카오톡 단톡방 분석 스크립트
 
 1st commit: 2021-08-31 12:30  
 2nd commit: 2021-09-01 01:06
 
-
-```python
 ### 1. 환경 및 경로 설정
-```
 
 
 ```python
@@ -44,9 +41,9 @@ def parse_line( txt ):
 
 
 ```python
-lines, ids, times, institutes = [], [], [], []
+lines, ids, times = [], [], []
 for fileIdx in range(len(filelist)):
-    #print('Opening .... Filename : [%s]'%datadir+filelist[fileIdx])
+    print('Opening .... Filename : [%s]'%datadir+filelist[fileIdx])
     chat = open(datadir+filelist[fileIdx], 'r', encoding="utf-8").readlines()[8:]
     for lineIdx in range(len(chat)):
         line = chat[lineIdx]
@@ -67,6 +64,9 @@ if saveOpt:
     df.to_excel(writer, sheet_name='Sheet1')
     writer.close()
 ```
+
+    Opening .... Filename : [./].\sample.txt
+    
 
 ### 4. 이름 별 채팅 횟수 계산 / Rank 나타내기
 
@@ -91,7 +91,7 @@ for rankIdx in range(len(rank)-1,-1,-1):
     #names_by_rank.append(names[rank[rankIdx]]); counts_by_rank.append(counts[rank[rankIdx]])
 
 # Visualization
-plt.figure(figsize=(5,5))
+plt.figure(figsize=(8,5))
 plt.barh(names_by_rank, counts_by_rank)
 ax = plt.gca(); ax.invert_yaxis(); #ax.set_xscale('log')
 plt.xlabel('Total message count rank', fontsize=15)
@@ -117,6 +117,8 @@ ax.tick_params( axis='x', labelsize= 15 )
 
 ### 5. 특정 이름 가진 사람만 분석하기
 
+***target_id*** 변수 설정을 통해, 특정 id를 가진 사람의 발화 내용과 시점을 아래와 같이 가져올 수 있음.
+
 
 ```python
 # 계산 편의를 위해 리스트로 변환
@@ -124,18 +126,17 @@ nicknames = df['nickname'].to_list()
 timestamps = df['timestamp'].to_list()
 contents = df['contents'].to_list()
 
-target_id = '박지'
+target_id = '효빈'
 times = [timestamps[i] for i in range(len(nicknames)) if target_id in nicknames[i]]
 lines = [contents[i] for i in range(len(nicknames)) if target_id in nicknames[i]]
 
-print('발화 시점: %s'%times)
+print('발화 시점: %s\n'%times)
 print('발화 내용: %s'%lines)
-
-
 ```
 
-    발화 시점: ['Aug 3, 2021 9:45 AM', 'Aug 6, 2021 11:24 AM', 'Aug 12, 2021 2:20 PM', 'Aug 13, 2021 10:58 AM']
-    발화 내용: ['넵 괜찮습니다~~', '학교에 제출할 서류가 있어서 오늘은 재택하겠습니다..!', '넵 저도 괜찮습니답', '저도 오늘 재택하겠습니다']
+    발화 시점: ['Aug 3, 2021 6:27 PM', 'Aug 5, 2021 1:59 PM', 'Aug 6, 2021 4:36 PM', 'Aug 6, 2021 4:37 PM', 'Aug 11, 2021 12:33 PM', 'Aug 11, 2021 12:35 PM', 'Aug 11, 2021 12:38 PM', 'Aug 11, 2021 12:39 PM', 'Aug 11, 2021 3:21 PM', 'Aug 11, 2021 3:21 PM', 'Aug 11, 2021 3:22 PM', 'Aug 11, 2021 3:22 PM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 2:16 PM', 'Aug 12, 2021 2:16 PM', 'Aug 12, 2021 2:27 PM', 'Aug 17, 2021 4:35 PM', 'Aug 17, 2021 4:35 PM', 'Aug 17, 2021 4:44 PM', 'Aug 17, 2021 4:50 PM', 'Aug 19, 2021 10:10 AM', 'Aug 19, 2021 10:24 AM', 'Aug 19, 2021 3:17 PM', 'Aug 19, 2021 3:22 PM', 'Aug 19, 2021 3:22 PM', 'Aug 19, 2021 4:21 PM', 'Aug 19, 2021 4:22 PM', 'Aug 25, 2021 5:09 PM']
+    
+    발화 내용: ['담주에 할게요', 'Photo', 'Emoticons ', ' 넵넵 감사합니다! 다들 언능 퇴근하시고 좋은 하루 보내세요', 'sfn 제 내역같은데 처리할게요~', '7/15면 정영씨 아니면 전데', '아직 결제 안 했어요? submission fee는 내야 했을텐데..', '해외원화매출내역 7월분 있으신가요 ', '넵넵 감사합니다', '내일 저널클럽 원래 11신데 오후로 미룰 수 있을까요? 15시쯤요', '오전에 줌미팅이 있는데 시간이 애매해서 ', '넵 혹시 15시 어려운 분 계시면 말씀해주세요', 'Fil', 'Fil', 'Fil', '이번 저널클럽 페이', '저 저널클럽 준비 좀 더 잘 할 수 있을 것 같은데 다음주에 해도 괜찮을까요.. ', '좋은 논문인데 너무 대충 준비한 것 같아서', '넵 감사합니닷', '넵', '혹시 이것도 좀..', '저는 어제 목을 삐끗한 것 같은데 점점 심해져서 도저히 못 앉아있겠네요  좀 누우러 가볼게요', '넵넵 안그래도 보고있었어요  감사합니다', '저널 11시에 할게요~ @김정영  줌 회의실 개설좀 부탁드리겠습니다', '감사합니다', 'http', 'Photo', '최근 저널클럽 발표자료들이 안 올라와있는', '7월 15일~16', '저라고 생각했는데 아니더라구', '저도 이사 + 대전 방 알아보는 것 때문에 내일부터 월요일까지 휴가요~~ 급한건 카톡 주세요']
     
 
 ### 6. 발화자 별 발화 시점 구하기
@@ -178,7 +179,7 @@ def format_datestr( string_in ):
 #def which_day(y,m,d):return ['MON','TUE','WED','THU','FRI','SAT','SUN'][datetime.date(y,m,d).weekday()]
 ```
 
-이 함수를 이용해, 아래와 같이 생긴 2차원의 binary matrix를 구현한 뒤 raster plot을 시각화.
+이 함수를 이용해, 아래와 같이 생긴 2차원의 binary matrix를 구현한 뒤 이를 raster plot으로 시각화.
 
 참고로 raster_matrix는 아래와 같이 생김
 
