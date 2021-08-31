@@ -19,6 +19,7 @@ import os
 from glob import glob
 datadir = './'
 #datadir = 'C:/Users/Gbook-Jeelab/Desktop/'
+datadir = 'C:/Users/Gbook-Jeelab/Documents/GitHub/private_data/'
 filelist = glob(datadir+'*.txt');filelist.sort();
 
 # File selection
@@ -29,12 +30,11 @@ if 'Date' == open(filename, 'r', encoding="utf-8").readlines()[1][:4]:
     export_version = 'Eng' #'Kor'
 else:
     export_version = 'Kor' #'Kor'
-
 print('(%s ver.) Selected file -> [%s]'%(export_version,filename))
 
 ```
 
-    (Eng ver.) Selected file -> [.\sample.txt]
+    (Kor ver.) Selected file -> [C:/Users/Gbook-Jeelab/Documents/GitHub/private_data\Talk_2021.8.31 15_30-1.txt]
     
 
 ### 2. 텍스트 라인 포맷에 맞게 잘라내는 함수 정의
@@ -84,15 +84,14 @@ for fileIdx in range(len(filelist)):
                 pass
         
 # Save option
-saveOpt = True
-if saveOpt:
-    df = pd.DataFrame( {'timestamp':times, 'nickname':ids, "contents":lines })
+df = pd.DataFrame( {'timestamp':times, 'nickname':ids, "contents":lines })
+if False:
     writer = pd.ExcelWriter('chat_data.xlsx', engine='xlsxwriter')
     df.to_excel(writer, sheet_name='Sheet1')
     writer.close()
 ```
 
-    Opening .... Filename : [.\sample.txt]
+    Opening .... Filename : [C:/Users/Gbook-Jeelab/Documents/GitHub/private_data\Talk_2021.8.31 15_30-1.txt]
     
 
 ### 4. 이름 별 채팅 횟수 계산 / Rank 나타내기
@@ -127,15 +126,11 @@ ax.tick_params( axis='x', labelsize= 15 )
 
 ```
 
-    [Rank 01] 이재: 32
-    [Rank 02] 효빈: 31
-    [Rank 03] 김보: 22
-    [Rank 04] 김정: 19
-    [Rank 05] 이규: 12
-    [Rank 06] 이유: 6
-    [Rank 07] 박지: 4
-    [Rank 08] 김해: 2
-    [Rank 09] 김서: 1
+    [Rank 01] 효빈: 2335
+    [Rank 02] 홍광: 2073
+    [Rank 03] 손망: 1299
+    [Rank 04] 원택: 895
+    [Rank 05] 완태: 389
     
 
 
@@ -283,6 +278,49 @@ plt.ylabel('발화자');
 
 
 ![png](output_15_0.png)
+
+
+
+```python
+
+```
+
+
+```python
+# Smoothing first
+def smooth(x, span): return np.convolve(x,np.ones(int(span))/int(span), mode='same')
+raster_smooth = np.zeros( (when_by_whom[-1,0]+1,len(names_by_rank)), dtype='bool')
+n_smooth = 600
+for i in range(raster_matrix.shape[1]):
+    raster_smooth[:,i]= smooth( raster_matrix[:,i], n_smooth )
+    
+plt.figure(figsize=(12,3))
+plt.subplot(1,3,(1,2))
+plt.imshow(raster_smooth.transpose(), aspect='auto', cmap='gray')
+plt.xlabel('Time (min)')
+plt.yticks( ticks = range(len(names_by_rank)), labels = names_by_rank )
+plt.gca().invert_yaxis()
+plt.grid(b=None)
+plt.ylim((-.5, len(names_by_rank)-.5))
+plt.title('P(chat), smoothed by [%d] minutes'%n_smooth)
+
+plt.subplot(1,3,3)
+corr = pd.DataFrame( raster_smooth ).corr()
+plt.imshow(corr)
+plt.xticks( ticks = range(len(names_by_rank)), labels = names_by_rank )
+plt.yticks( ticks = range(len(names_by_rank)), labels = names_by_rank )
+plt.axis((-.5,len(names_by_rank)-.5,-.5,len(names_by_rank)-.5))
+plt.gca().invert_yaxis()
+plt.grid(b=None)
+cb=plt.colorbar(label='Pearson r')
+plt.title(('Correlation table'));
+plt.show()
+#plt.clim((0,.5))
+
+```
+
+
+![png](output_17_0.png)
 
 
 
