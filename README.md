@@ -2,7 +2,7 @@
 
 1st commit: 2021-08-31 12:30. 뼈대 작업.  
 2nd commit: 2021-09-01 01:06. Raster plot 추가.  
-3rd commit: 2021-09-01 02:38. 한글버전/영어버전 export 호환성 개선.  
+3rd commit: 2021-09-01 02:55. 한글버전/영어버전 export 호환성 개선.  
 
 
 ### 1. 환경 및 경로 설정
@@ -18,16 +18,23 @@ import locale; locale.setlocale(locale.LC_ALL, 'ko_KR.UTF-8')
 import os
 from glob import glob
 datadir = './'
+#datadir = 'C:/Users/Gbook-Jeelab/Desktop/'
 filelist = glob(datadir+'*.txt');filelist.sort();
 
 # File selection
 filename = filelist[-1]
-print('Selected file -> :'+filename)
 
-export_version = 'Eng' #'Kor'
+# Autodetect KOR/ENG version (export executed in which version of OS)
+if 'Date' == open(filename, 'r', encoding="utf-8").readlines()[1][:4]:
+    export_version = 'Eng' #'Kor'
+else:
+    export_version = 'Kor' #'Kor'
+
+print('(%s ver.) Selected file -> [%s]'%(export_version,filename))
+
 ```
 
-    Selected file -> :.\sample.txt
+    (Eng ver.) Selected file -> [.\sample.txt]
     
 
 ### 2. 텍스트 라인 포맷에 맞게 잘라내는 함수 정의
@@ -35,28 +42,19 @@ export_version = 'Eng' #'Kor'
 
 ```python
 """ English version """
-def parse_line_eng( txt ):
-  txt_split = txt.split(',')
-  time_ = txt_split[0]+','+txt_split[1]
-  id_ = txt_split[2].split(':')[0][1:-1].split('/')[0]
-  contents_ = txt_split[2].split(':')[1][1:-1]
-  contents_ = re.compile('[ㄱ-ㅎ|ㅏ-ㅣ]').sub('',contents_)
-  return time_, id_, contents_
-
-""" Korean version """
-def parse_line_kor( txt ):
-  txt_split = txt.split(',')
-  time_ = txt_split[0]
-  id_ = txt_split[1].split(':')[0][1:-1].split('/')[0]
-  contents_ = txt_split[1].split(':')[1][1:-1]
-  contents_ = re.compile('[ㄱ-ㅎ|ㅏ-ㅣ]').sub('',contents_)
-  return time_, id_, contents_
-
-if export_version == 'Eng':
-    parse_line = parse_line_eng
-else:
-    parse_line = parse_line_kor
+def parse_line( txt, export_version=export_version ):
+    txt_split = txt.split(',')
+    if export_version == 'Eng':
+        time_ = txt_split[0]+','+txt_split[1]
+        id_ = txt_split[2].split(':')[0][1:-1].split('/')[0]
+        contents_ = txt_split[2].split(':')[1][1:-1]
+    elif export_version == 'Kor':
+        time_ = txt_split[0]
+        id_ = txt_split[1].split(':')[0][1:-1].split('/')[0]
+        contents_ = txt_split[1].split(':')[1][1:-1]
+    contents_ = re.compile('[ㄱ-ㅎ|ㅏ-ㅣ]').sub('',contents_)
     
+    return time_, id_, contents_
 ```
 
 ### 3. chat_data 폴더에 있는 모든 텍스트파일 긁어와서 list에 넣기 
@@ -72,7 +70,7 @@ for fileIdx in range(len(filelist)):
         if line is not '\n':
             try: # 현재 버전에서는 첫 줄만 가져옴. 향후 줄바꿈(\n)을 제거해서 긴 글도 가져올 필요 있음.
                 if export_version == 'Kor':
-                    if line[0]=='2': # 이 조건문 조금 더 정교하게 만들 필요 있음.
+                    if line[0]=='2': # 이 조건문 조금 더 정교하게 만들 필요 있음. 지금 너무 못 생김.
                         time_, id_, contents_ = parse_line(line)
                         ids.append(id_); 
                         lines.append(contents_)
@@ -201,39 +199,27 @@ from datetime import datetime
 from calendar import monthrange
 
 """ English version """
-def format_datestr_eng( string_in ):
-    # Parse input
-    md_str, yHM_str = string_in.split(',')[0], string_in.split(',')[1][1:]
-    y = int(yHM_str.split(' ')[0])
-    m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].index(md_str.split(' ')[0])+1
-    d = int( md_str.split(' ')[1] )
-    H = int( yHM_str.split(' ')[1].split(':')[0] )
-    if yHM_str.split(' ')[-1] == 'PM': H += 12
-    M = int( yHM_str.split(' ')[1].split(':')[1] )
+def format_datestr( string_in, export_version = export_version ):
+    if export_version == 'Eng':
+        # Parse input
+        md_str, yHM_str = string_in.split(',')[0], string_in.split(',')[1][1:]
+        y = int(yHM_str.split(' ')[0])
+        m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'].index(md_str.split(' ')[0])+1
+        d = int( md_str.split(' ')[1] )
+        H = int( yHM_str.split(' ')[1].split(':')[0] )
+        if yHM_str.split(' ')[-1] == 'PM': H += 12
+        M = int( yHM_str.split(' ')[1].split(':')[1] )
         
-    # Correct day-, month-, or year-passing
-    if H>=24: 
-        d += 1; H -= 24
-    if d > monthrange(y, m)[1]:
-        m += 1; d = 1
-    if m > 13:
-        y += 1; m = 1
-    # Output arguments
-    string_out = '%04d-%02d-%02d %02d:%02d:00'%(y,m,d,H,M)
-    abs_time = mktime(datetime.strptime(string_out,'%Y-%m-%d %H:%M:%S').timetuple())
-    return string_out, abs_time
-
-""" Korean version """
-def format_datestr_kor( string_in ):
-    split_str = string_in.split('.')
-    y,m,d = int(split_str[0]), int(split_str[1]), int(split_str[2])
-    
-    PM = split_str[-1].split(' ')[1] == '오후'
-    HM_str = split_str[-1].split(' ')[2]
-    H = int( HM_str.split(':')[0] )
-    if PM: H += 12
-    M = int( HM_str.split(':')[1] )
-    
+    elif export_version == 'Kor':
+        # Parse input
+        split_str = string_in.split('.')
+        y,m,d = int(split_str[0]), int(split_str[1]), int(split_str[2])
+        PM = split_str[-1].split(' ')[1] == '오후'
+        HM_str = split_str[-1].split(' ')[2]
+        H = int( HM_str.split(':')[0] )
+        if PM: H += 12
+        M = int( HM_str.split(':')[1] )        
+        
     # Correct day-, month-, or year-passing
     if H>=24: 
         d += 1; H -= 24
@@ -247,11 +233,7 @@ def format_datestr_kor( string_in ):
     abs_time = mktime(datetime.strptime(string_out,'%Y-%m-%d %H:%M:%S').timetuple())
     return string_out, abs_time    
 
-if export_version == 'Eng':
-    format_datestr = format_datestr_eng
-else:
-    format_datestr = format_datestr_kor
-    
+
 #def which_day(y,m,d):return ['MON','TUE','WED','THU','FRI','SAT','SUN'][datetime.date(y,m,d).weekday()]
 ```
 
