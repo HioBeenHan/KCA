@@ -1,13 +1,13 @@
 # 재미로 만들어보는 카카오톡 단톡방 분석 스크립트
 
-1st commit: 2021-08-31 12:30  
-2nd commit: 2021-09-01 01:06
+1st commit: 2021-08-31 12:30. 뼈대 작업.  
+2nd commit: 2021-09-01 01:06. Raster plot 추가.  
+3rd commit: 2021-09-01 02:38. 한글버전/영어버전 export 호환성 개선.  
 
-<<<<<<< HEAD
-=======
 
->>>>>>> 1b1addb0e577267f5822a695242a05e6edef9af9
 ### 1. 환경 및 경로 설정
+
+
 
 
 ```python
@@ -23,6 +23,8 @@ filelist = glob(datadir+'*.txt');filelist.sort();
 # File selection
 filename = filelist[-1]
 print('Selected file -> :'+filename)
+
+export_version = 'Eng' #'Kor'
 ```
 
     Selected file -> :.\sample.txt
@@ -32,13 +34,29 @@ print('Selected file -> :'+filename)
 
 
 ```python
-def parse_line( txt ):
+""" English version """
+def parse_line_eng( txt ):
   txt_split = txt.split(',')
   time_ = txt_split[0]+','+txt_split[1]
   id_ = txt_split[2].split(':')[0][1:-1].split('/')[0]
   contents_ = txt_split[2].split(':')[1][1:-1]
   contents_ = re.compile('[ㄱ-ㅎ|ㅏ-ㅣ]').sub('',contents_)
   return time_, id_, contents_
+
+""" Korean version """
+def parse_line_kor( txt ):
+  txt_split = txt.split(',')
+  time_ = txt_split[0]
+  id_ = txt_split[1].split(':')[0][1:-1].split('/')[0]
+  contents_ = txt_split[1].split(':')[1][1:-1]
+  contents_ = re.compile('[ㄱ-ㅎ|ㅏ-ㅣ]').sub('',contents_)
+  return time_, id_, contents_
+
+if export_version == 'Eng':
+    parse_line = parse_line_eng
+else:
+    parse_line = parse_line_kor
+    
 ```
 
 ### 3. chat_data 폴더에 있는 모든 텍스트파일 긁어와서 list에 넣기 
@@ -47,16 +65,23 @@ def parse_line( txt ):
 ```python
 lines, ids, times = [], [], []
 for fileIdx in range(len(filelist)):
-    print('Opening .... Filename : [%s]'%datadir+filelist[fileIdx])
-    chat = open(datadir+filelist[fileIdx], 'r', encoding="utf-8").readlines()[8:]
+    print('Opening .... Filename : [%s]'%filelist[fileIdx])
+    chat = open(filelist[fileIdx], 'r', encoding="utf-8").readlines()[8:]
     for lineIdx in range(len(chat)):
         line = chat[lineIdx]
         if line is not '\n':
-            try:
-                time_, id_, contents_ = parse_line(line)
-                ids.append(id_); 
-                lines.append(contents_)
-                times.append(time_); 
+            try: # 현재 버전에서는 첫 줄만 가져옴. 향후 줄바꿈(\n)을 제거해서 긴 글도 가져올 필요 있음.
+                if export_version == 'Kor':
+                    if line[0]=='2': # 이 조건문 조금 더 정교하게 만들 필요 있음.
+                        time_, id_, contents_ = parse_line(line)
+                        ids.append(id_); 
+                        lines.append(contents_)
+                        times.append(time_); 
+                else:
+                    time_, id_, contents_ = parse_line(line)
+                    ids.append(id_); 
+                    lines.append(contents_)
+                    times.append(time_); 
             except:
                 pass
         
@@ -69,7 +94,7 @@ if saveOpt:
     writer.close()
 ```
 
-    Opening .... Filename : [./].\sample.txt
+    Opening .... Filename : [.\sample.txt]
     
 
 ### 4. 이름 별 채팅 횟수 계산 / Rank 나타내기
@@ -119,6 +144,30 @@ ax.tick_params( axis='x', labelsize= 15 )
 ![png](output_8_1.png)
 
 
+### 참고) 그림에서 한글이 깨지는 경우 해결법
+
+*** ***
+*** (1) Matplotlib Font 헤더파일 변경 ***  
+
+귀찮으니 다음 [블로그 글](https://mimmic.tistory.com/entry/matplotlib-%ED%95%9C%EA%B8%80-%EA%B9%A8%EC%A7%90-%ED%95%B4%EA%B2%B0-%EB%B0%A9%EB%B2%95) 참고.  
+  
+*** ***
+  
+*** (2) Matplotlib 패키지 경로에 직접 ttf 파일 넣어주기 ***
+
+Matplotlib 설치 경로는 아래 코드 실행으로 알아볼 수 있고,
+
+``` python
+import sys
+sys.executable 
+```
+
+위 코드의 실행 결과로, 지금 이 local machine의 경우엔 C:\ProgramData\Anaconda3\python.exe 가 뜬다.  
+만약 이런 경우엔, [하위 경로](C:\ProgramData\Anaconda3\Lib\site-packages\matplotlib\mpl-data\fonts\ttf)(C:\ProgramData\Anaconda3\Lib\site-packages\matplotlib\mpl-data\fonts\ttf)를 열어서  
+폰트 파일(NanumGothic.ttf) 파일을 넣어주면 됨.
+*** ***
+
+
 ### 5. 특정 이름 가진 사람만 분석하기
 
 ***target_id*** 변수 설정을 통해, 특정 id를 가진 사람의 발화 내용과 시점을 아래와 같이 가져올 수 있음.
@@ -134,14 +183,9 @@ target_id = '효빈'
 times = [timestamps[i] for i in range(len(nicknames)) if target_id in nicknames[i]]
 lines = [contents[i] for i in range(len(nicknames)) if target_id in nicknames[i]]
 
-print('발화 시점: %s\n'%times)
-print('발화 내용: %s'%lines)
+#print('발화 시점: %s\n'%times)
+#print('발화 내용: %s'%lines)
 ```
-
-    발화 시점: ['Aug 3, 2021 6:27 PM', 'Aug 5, 2021 1:59 PM', 'Aug 6, 2021 4:36 PM', 'Aug 6, 2021 4:37 PM', 'Aug 11, 2021 12:33 PM', 'Aug 11, 2021 12:35 PM', 'Aug 11, 2021 12:38 PM', 'Aug 11, 2021 12:39 PM', 'Aug 11, 2021 3:21 PM', 'Aug 11, 2021 3:21 PM', 'Aug 11, 2021 3:22 PM', 'Aug 11, 2021 3:22 PM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 11:23 AM', 'Aug 12, 2021 2:16 PM', 'Aug 12, 2021 2:16 PM', 'Aug 12, 2021 2:27 PM', 'Aug 17, 2021 4:35 PM', 'Aug 17, 2021 4:35 PM', 'Aug 17, 2021 4:44 PM', 'Aug 17, 2021 4:50 PM', 'Aug 19, 2021 10:10 AM', 'Aug 19, 2021 10:24 AM', 'Aug 19, 2021 3:17 PM', 'Aug 19, 2021 3:22 PM', 'Aug 19, 2021 3:22 PM', 'Aug 19, 2021 4:21 PM', 'Aug 19, 2021 4:22 PM', 'Aug 25, 2021 5:09 PM']
-    
-    발화 내용: ['담주에 할게요', 'Photo', 'Emoticons ', ' 넵넵 감사합니다! 다들 언능 퇴근하시고 좋은 하루 보내세요', 'sfn 제 내역같은데 처리할게요~', '7/15면 정영씨 아니면 전데', '아직 결제 안 했어요? submission fee는 내야 했을텐데..', '해외원화매출내역 7월분 있으신가요 ', '넵넵 감사합니다', '내일 저널클럽 원래 11신데 오후로 미룰 수 있을까요? 15시쯤요', '오전에 줌미팅이 있는데 시간이 애매해서 ', '넵 혹시 15시 어려운 분 계시면 말씀해주세요', 'Fil', 'Fil', 'Fil', '이번 저널클럽 페이', '저 저널클럽 준비 좀 더 잘 할 수 있을 것 같은데 다음주에 해도 괜찮을까요.. ', '좋은 논문인데 너무 대충 준비한 것 같아서', '넵 감사합니닷', '넵', '혹시 이것도 좀..', '저는 어제 목을 삐끗한 것 같은데 점점 심해져서 도저히 못 앉아있겠네요  좀 누우러 가볼게요', '넵넵 안그래도 보고있었어요  감사합니다', '저널 11시에 할게요~ @김정영  줌 회의실 개설좀 부탁드리겠습니다', '감사합니다', 'http', 'Photo', '최근 저널클럽 발표자료들이 안 올라와있는', '7월 15일~16', '저라고 생각했는데 아니더라구', '저도 이사 + 대전 방 알아보는 것 때문에 내일부터 월요일까지 휴가요~~ 급한건 카톡 주세요']
-    
 
 ### 6. 발화자 별 발화 시점 구하기
 
@@ -156,8 +200,8 @@ from time import mktime
 from datetime import datetime
 from calendar import monthrange
 
-def format_datestr( string_in ):
-    
+""" English version """
+def format_datestr_eng( string_in ):
     # Parse input
     md_str, yHM_str = string_in.split(',')[0], string_in.split(',')[1][1:]
     y = int(yHM_str.split(' ')[0])
@@ -174,12 +218,40 @@ def format_datestr( string_in ):
         m += 1; d = 1
     if m > 13:
         y += 1; m = 1
-    
     # Output arguments
     string_out = '%04d-%02d-%02d %02d:%02d:00'%(y,m,d,H,M)
     abs_time = mktime(datetime.strptime(string_out,'%Y-%m-%d %H:%M:%S').timetuple())
     return string_out, abs_time
 
+""" Korean version """
+def format_datestr_kor( string_in ):
+    split_str = string_in.split('.')
+    y,m,d = int(split_str[0]), int(split_str[1]), int(split_str[2])
+    
+    PM = split_str[-1].split(' ')[1] == '오후'
+    HM_str = split_str[-1].split(' ')[2]
+    H = int( HM_str.split(':')[0] )
+    if PM: H += 12
+    M = int( HM_str.split(':')[1] )
+    
+    # Correct day-, month-, or year-passing
+    if H>=24: 
+        d += 1; H -= 24
+    if d > monthrange(y, m)[1]:
+        m += 1; d = 1
+    if m > 13:
+        y += 1; m = 1
+        
+    # Output arguments
+    string_out = '%04d-%02d-%02d %02d:%02d:00'%(y,m,d,H,M)
+    abs_time = mktime(datetime.strptime(string_out,'%Y-%m-%d %H:%M:%S').timetuple())
+    return string_out, abs_time    
+
+if export_version == 'Eng':
+    format_datestr = format_datestr_eng
+else:
+    format_datestr = format_datestr_kor
+    
 #def which_day(y,m,d):return ['MON','TUE','WED','THU','FRI','SAT','SUN'][datetime.date(y,m,d).weekday()]
 ```
 
@@ -228,10 +300,8 @@ plt.ylabel('발화자');
 ```
 
 
-![png](output_14_0.png)
+![png](output_15_0.png)
 
-
-# 시간 잘 가네
 
 
 ```python
